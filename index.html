@@ -431,8 +431,8 @@ function faceMaskFn(G){ return g=>{ if(masks.skin.ok) g.drawImage(masks.skin.c,0
    YAŞ
    ============================================================ */
 function skinColor(G){ try{ const sm=blurCopy(orig,16), k=sm.width/W; let r=0,g=0,b=0;
-  for(const i of [151,116,345]){ const p=G.P(i); const d=smc.getImageData(clamp(p.x*k|0,0,sm.width-1),clamp(p.y*k|0,0,sm.height-1),1,1).data; r+=d[0];g+=d[1];b+=d[2]; }
-  return `rgb(${r/3|0},${g/3|0},${b/3|0})`; }catch(e){ return null; } }
+  for(const i of [116,345,50,280]){ const p=G.P(i); const d=smc.getImageData(clamp(p.x*k|0,0,sm.width-1),clamp(p.y*k|0,0,sm.height-1),1,1).data; r+=d[0];g+=d[1];b+=d[2]; }
+  return `rgb(${r/4|0},${g/4|0},${b/4|0})`; }catch(e){ return null; } }
 function softFill(g,G,draw,blur=.12){ g.fillStyle='#fff'; g.shadowColor='#fff'; g.shadowBlur=G.d*blur; draw(); g.fill(); g.shadowBlur=0; }
 function grayHair(g,amt=1){ blend(g,'saturation','#808080',amt); blend(g,'lighten','#9d9b97',amt); blend(g,'screen','#2a2a2a',.6*amt); }
 function applyAge(){
@@ -447,10 +447,10 @@ function applyAge(){
       maskWith(g,gg=>{ faceMaskFn(G)(gg); gg.globalCompositeOperation='destination-in'; softFill(gg,G,()=>poly(gg,G,OVAL,-.02)); }); cutFeatures(g,G,{brows:false});
       fc.globalAlpha=.85*a; fc.drawImage(layer,0,0); fc.globalAlpha=1;
       // kaş + sakal/bıyık kılları ağarır (yalnız koyu pikseller değişir)
-      g=layerFrom(frame); grayHair(g);
-      maskWith(g,gg=>{ [BROW_L,BROW_R].forEach(b=>softFill(gg,G,()=>poly(gg,G,b,.45),.06)); softFill(gg,G,()=>beardRegion(gg,G),.1); });
-      g.save(); g.globalCompositeOperation='destination-out'; g.fillStyle='#000'; poly(g,G,LIPS,.02); g.fill(); g.restore();
-      fc.globalAlpha=clamp(a*1.2,0,1)*.92; fc.drawImage(layer,0,0); fc.globalAlpha=1;
+      for(const part of [gg=>{ gg.beginPath(); for(const b of [BROW_L,BROW_R]){ const pts=b.map(G.P), c=pts.reduce((q,p)=>({x:q.x+p.x/pts.length,y:q.y+p.y/pts.length}),{x:0,y:0}); pts.forEach((p,i)=>{const x=p.x+(p.x-c.x)*.45,y=p.y+(p.y-c.y)*.45; i?gg.lineTo(x,y):gg.moveTo(x,y);}); gg.closePath(); } gg.fillStyle='#fff'; gg.shadowColor='#fff'; gg.shadowBlur=G.d*.06; gg.fill(); }, gg=>softFill(gg,G,()=>beardRegion(gg,G),.1)]){
+        g=layerFrom(frame); grayHair(g); maskWith(g,part);
+        g.save(); g.globalCompositeOperation='destination-out'; g.fillStyle='#000'; poly(g,G,LIPS,.02); g.fill(); g.restore();
+        fc.globalAlpha=clamp(a*1.2,0,1)*.92; fc.drawImage(layer,0,0); fc.globalAlpha=1; }
       wrinkles(fc,G,a);
     });
   } else {
@@ -459,8 +459,9 @@ function applyAge(){
       // sakal gölgesini sil (cilt rengine çek)
       const sk=skinColor(G);
       if(sk){ const g=layerFrom(blurCopy(frame,6)); blend(g,'lighten',sk,.9);
-        maskWith(g,gg=>softFill(gg,G,()=>beardRegion(gg,G),.15)); cutFeatures(g,G,{eyes:false,brows:false});
-        fc.globalAlpha=.8*y; fc.drawImage(layer,0,0); fc.globalAlpha=1; }
+        g.save(); g.globalCompositeOperation='soft-light'; g.globalAlpha=.6; g.drawImage(blurCopy(frame,14),0,0,W,H); g.restore();
+        maskWith(g,gg=>softFill(gg,G,()=>beardRegion(gg,G),.25)); cutFeatures(g,G,{eyes:false,brows:false});
+        fc.globalAlpha=.6*y; fc.drawImage(layer,0,0); fc.globalAlpha=1; }
       // pürüzsüz, parlak cilt
       const g=layerFrom(blurCopy(frame,5)); blend(g,'screen','#fff0e8',.15*y);
       maskWith(g,gg=>{ faceMaskFn(G)(gg); gg.globalCompositeOperation='destination-in'; softFill(gg,G,()=>poly(gg,G,OVAL,-.03)); }); cutFeatures(g,G);
@@ -476,7 +477,7 @@ function wrinkles(g,G,a){
     g.globalCompositeOperation='multiply';
     g.strokeStyle=`rgba(110,65,45,${.2*a*k})`; g.lineWidth=w*2.4; g.shadowColor=`rgba(110,65,45,${.25*a*k})`; g.shadowBlur=G.d*.035; path(); g.stroke();
     g.strokeStyle=`rgba(90,50,35,${.22*a*k})`; g.lineWidth=w*.7; g.shadowBlur=G.d*.008; path(); g.stroke();
-    g.globalCompositeOperation='screen'; g.translate(0,w*1.7); g.strokeStyle=`rgba(255,238,225,${.14*a*k})`; g.lineWidth=w*1.8; g.shadowColor=`rgba(255,238,225,${.2*a*k})`; g.shadowBlur=G.d*.03; path(); g.stroke(); g.restore(); };
+    g.globalCompositeOperation='screen'; g.translate(0,w*1.7); g.strokeStyle=`rgba(255,238,225,${.07*a*k})`; g.lineWidth=w*1.8; g.shadowColor=`rgba(255,238,225,${.2*a*k})`; g.shadowBlur=G.d*.03; path(); g.stroke(); g.restore(); };
   inLocal(g,G,()=>{
     const brow=Math.min(loc(P(105)).y,loc(P(334)).y), top=loc(P(10)).y;
     for(let i=0;i<4;i++){ const y=lerp(brow-.16,top+.14,i/3), w=.5-i*.03, wav=(i%2?1:-1)*.02;
