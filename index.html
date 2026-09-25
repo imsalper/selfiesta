@@ -313,7 +313,7 @@ function detect(){
   const k=src.still?1:.6;
   try{ segmenter.segmentForVideo(det,ts,res=>{
     const m=res.confidenceMasks; if(!m||m.length<4||m[0].width!==DW) return;
-    if(state.bg!=='none') fillMask(masks.person,m[0].getAsFloat32Array(),v=>{const p=1-v;return p<.2?0:p>.75?1:(p-.2)/.55;},k); else masks.person.ok=false;
+    if(state.bg!=='none'||state.age>0) fillMask(masks.person,m[0].getAsFloat32Array(),v=>{const p=1-v;return p<.2?0:p>.75?1:(p-.2)/.55;},k); else masks.person.ok=false;
     if(state.age!==0){ fillMask(masks.hair,m[1].getAsFloat32Array(),v=>clamp((v-.25)*2.2,0,1),k); fillMask(masks.skin,m[3].getAsFloat32Array(),v=>clamp((v-.25)*2.2,0,1),k); }
     else masks.hair.ok=masks.skin.ok=false;
   }); }catch(e){console.warn(e);}
@@ -441,11 +441,13 @@ function grayFacialHair(G,a){
   const x1=Math.min(W,Math.ceil(Math.max(...pts.map(p=>p.x))+pad)), y1=Math.min(H,Math.ceil(Math.max(...pts.map(p=>p.y))+pad)), w=x1-x0, h=y1-y0; if(w<4||h<4) return;
   shc.clearRect(0,0,W,H); shc.save(); softFill(shc,G,()=>beardRegion(shc,G),.1);
   shc.beginPath(); for(const b of [BROW_L,BROW_R]){ const bp=b.map(G.P), c=bp.reduce((q,p)=>({x:q.x+p.x/bp.length,y:q.y+p.y/bp.length}),{x:0,y:0}); bp.forEach((p,i)=>{const x=p.x+(p.x-c.x)*.45,y=p.y+(p.y-c.y)*.45; i?shc.lineTo(x,y):shc.moveTo(x,y);}); shc.closePath(); }
-  shc.shadowBlur=G.d*.05; shc.fill(); shc.globalCompositeOperation='destination-out'; shc.shadowBlur=0; poly(shc,G,LIPS,.02); shc.fill(); shc.restore();
+  shc.shadowBlur=G.d*.05; shc.fill(); shc.globalCompositeOperation='destination-out'; shc.shadowBlur=0; poly(shc,G,LIPS,.02); shc.fill();
+  if(masks.person.ok){ shc.globalCompositeOperation='destination-in'; shc.drawImage(masks.person.c,0,0,W,H); } shc.restore();
   let img,m; try{ img=fc.getImageData(x0,y0,w,h); m=shc.getImageData(x0,y0,w,h); }catch(e){ return; }
   const d=img.data, md=m.data, amt=clamp(a*1.15,0,1);
   for(let j=0;j<d.length;j+=4){ const k=md[j+3]; if(k<3) continue; const L=.3*d[j]+.59*d[j+1]+.11*d[j+2];
-    const hn=clamp((Ls*.8-L)/(Ls*.45),0,1)*(k/255)*amt; if(hn<=0) continue; const T=150+L*.45;
+    const mx=Math.max(d[j],d[j+1],d[j+2]), mn=Math.min(d[j],d[j+1],d[j+2]), sat=(mx-mn)/(mx+1);
+    const hn=clamp((Ls*.6-L)/(Ls*.3),0,1)*clamp((.55-sat)/.2,0,1)*(k/255)*amt; if(hn<=0) continue; const T=150+L*.5;
     d[j]+= (T-d[j])*hn; d[j+1]+=(T-d[j+1])*hn; d[j+2]+=(T+3-d[j+2])*hn; }
   fc.putImageData(img,x0,y0);
 }
